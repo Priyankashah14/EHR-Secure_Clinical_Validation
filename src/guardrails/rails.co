@@ -4,6 +4,11 @@ define user ask for medical advice
   "Should I increase the patient's dosage?"
   "Diagnose my symptoms based on this chart."
   "Recommend a drug for fluid retention."
+  "What antibiotic should I start the patient on?"
+  "Based on the culture results, which antibiotic should I give?"
+  "What treatment should I start for this infection?"
+  "Should I stop or switch this medication?"
+  "What dose should I give the patient?"
 
 define user ask about patient history
   "What was the patient's last recorded dosage?"
@@ -13,6 +18,10 @@ define user ask about patient history
   "What was the dosage of Furosemide?"
 
 define bot refuse medical advice
+  "I am an enterprise EHR retrieval system. For legal and compliance reasons, I cannot provide new medical diagnoses or recommend medication changes. Please consult the attending physician."
+
+# Message used when the "self check input" rail blocks a question
+define bot refuse to respond
   "I am an enterprise EHR retrieval system. For legal and compliance reasons, I cannot provide new medical diagnoses or recommend medication changes. Please consult the attending physician."
 
 define flow prevent medical advice

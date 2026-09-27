@@ -53,12 +53,19 @@ if prompt := st.chat_input(f"Ask about patient {patient_id}'s history..."):
     with st.spinner("Analyzing securely..."):
         try:
             response = requests.post(API_CHAT_URL, json=payload)
-            response.raise_for_status()
-            bot_reply = response.json().get("llm_response")
-            
-            # Enforce Output Disclaimer
-            bot_reply += "\n\n*⚠️ AI generated summary. Do not use for diagnostic purposes.*"
-            
+            if not response.ok:
+                # Show the API's error detail instead of a bare status code
+                try:
+                    detail = response.json().get("detail", response.text)
+                except ValueError:
+                    detail = response.text
+                bot_reply = f"❌ API Error {response.status_code}: {detail}"
+            else:
+                bot_reply = response.json().get("llm_response")
+
+                # Enforce Output Disclaimer
+                bot_reply += "\n\n*⚠️ AI generated summary. Do not use for diagnostic purposes.*"
+
         except requests.exceptions.RequestException as e:
             bot_reply = f"❌ API Error: {e}"
 

@@ -51,7 +51,8 @@ def get_db_engine():
     else:
         DB_URL = os.getenv("POSTGRES_URL", "postgresql+psycopg2://postgres:password@localhost:5432/clinical_db")
     
-    return create_engine(DB_URL)
+    # Fail fast if the DB is unreachable instead of hanging on the OS TCP timeout
+    return create_engine(DB_URL, connect_args={"connect_timeout": 5})
 
 
 # --- MODELS ---
@@ -81,10 +82,13 @@ async def process_clinical_query(query: ClinicalQuery):
         redactor = middleware["redactor"]
         safe_context = redactor.redact_clinical_context(raw_text=raw_db_context)
 
-        augmented_prompt = f"Clinical Context:\n{safe_context}\n\nUser Question: {query.prompt}"
-        
+        # Pass records as NeMo context (not inside the user message) so intent
+        # classification sees only the question and the medical-advice rail can fire
         rails = middleware["rails"]
-        response = await rails.generate_async(messages=[{"role": "user", "content": augmented_prompt}])
+        response = await rails.generate_async(messages=[
+            {"role": "context", "content": {"relevant_chunks": safe_context}},
+            {"role": "user", "content": query.prompt},
+        ])
 
         return {
             "status": "success",
@@ -137,14 +141,14 @@ async def process_chat(request: ChatRequest):
         redactor = middleware["redactor"]
         safe_context = redactor.redact_clinical_context(raw_text=real_db_context)
         
-        # 4. Assemble Prompt
-        augmented_prompt = f"Clinical Context:\n{safe_context}\n\nUser Question: {latest_question}"
-        
-        # 5. Format History for Guardrails
-        nemo_history = [{"role": msg.role, "content": msg.content} for msg in request.messages[:-1]]
-        nemo_history.append({"role": "user", "content": augmented_prompt})
-        
-        # 6. Route through Guardrails
+        # 4. Format History for Guardrails. Records go in as NeMo context rather than
+        # being prepended to the question; otherwise the record text dominates intent
+        # classification and medical-advice questions slip past the rail.
+        nemo_history = [{"role": "context", "content": {"relevant_chunks": safe_context}}]
+        nemo_history += [{"role": msg.role, "content": msg.content} for msg in request.messages[:-1]]
+        nemo_history.append({"role": "user", "content": latest_question})
+
+        # 5. Route through Guardrails
         rails = middleware["rails"]
         response = await rails.generate_async(messages=nemo_history)
         
@@ -156,7 +160,7 @@ async def process_chat(request: ChatRequest):
 
 # --- ENDPOINT 3: FETCH UNIQUE PATIENTS (EMBEDDINGS ONLY) ---
 @app.get("/api/v1/patients")
-async def get_unique_patients():
+def get_unique_patients():
     try:
         engine = get_db_engine()
         with engine.connect() as conn:
