@@ -1,8 +1,12 @@
+import os
+
 import streamlit as st
 import requests
 
-API_CHAT_URL = "http://localhost:8000/api/v1/chat"
-API_PATIENTS_URL = "http://localhost:8000/api/v1/patients"
+# In Docker, set API_BASE_URL to the API service name (e.g. http://api:8000)
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
+API_CHAT_URL = f"{API_BASE_URL}/api/v1/chat"
+API_PATIENTS_URL = f"{API_BASE_URL}/api/v1/patients"
 
 st.set_page_config(page_title="Zero-Trust Clinical EHR", layout="centered")
 st.title("🏥 Enterprise EHR Chat")
@@ -11,15 +15,19 @@ st.caption("Protected by Presidio Zero-Trust & NeMo Guardrails")
 # --- FETCH PATIENTS DYNAMICALLY ---
 @st.cache_data(ttl=300) # Cache the list for 5 minutes to reduce database load
 def fetch_patient_list():
-    try:
-        response = requests.get(API_PATIENTS_URL)
-        if response.status_code == 200:
-            return response.json().get("patients", ["No patients found"])
-    except:
-        return ["Database Connection Error"]
-    return ["Unknown Error"]
+    # Raises on failure so errors are shown and not cached
+    response = requests.get(API_PATIENTS_URL, timeout=10)
+    response.raise_for_status()
+    data = response.json()
+    if data.get("error"):
+        raise RuntimeError(f"API database error: {data['error']}")
+    return data.get("patients") or ["No patients found"]
 
-patient_list = fetch_patient_list()
+try:
+    patient_list = fetch_patient_list()
+except Exception as e:
+    st.sidebar.error(f"Could not load patients from {API_PATIENTS_URL}: {e}")
+    patient_list = []
 
 # Streamlit's selectbox is automatically searchable!
 patient_id = st.sidebar.selectbox("Select Patient File (Type to search)", patient_list)
