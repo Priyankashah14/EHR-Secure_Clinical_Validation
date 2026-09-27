@@ -1,0 +1,10 @@
+models:
+  - type: main
+    engine: openai
+    model: gpt-4o-mini
+    parameters:
+      base_url: "https://api.openai.com/v1"
+    
+  - type: embeddings
+    engine: SentenceTransformers
+    model: NeuML/bioclinical-modernbert-base-embeddings

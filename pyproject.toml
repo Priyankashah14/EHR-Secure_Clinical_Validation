@@ -1,0 +1,30 @@
+[project]
+name = "ehr-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "priyankashah14", email = "priyankashah1487@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.141.1",
+    "nemoguardrails>=0.24.1",
+    "pandas>=3.0.6",
+    "presidio-analyzer>=2.2.364",
+    "presidio-anonymizer>=2.2.364",
+    "psycopg2>=2.9.13",
+    "psycopg2-binary>=2.9.13",
+    "python-dotenv>=1.2.3",
+    "sentence-transformers>=6.1.0",
+    "sqlalchemy>=2.0.54",
+    "streamlit>=1.64.0",
+    "tqdm>=4.70.1",
+]
+
+[project.scripts]
+ehr-project = "ehr_project:main"
+
+[build-system]
+requires = ["uv_build>=0.12.2,<0.13.0"]
+build-backend = "uv_build"
